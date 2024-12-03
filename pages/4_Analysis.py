@@ -29,25 +29,7 @@ st.markdown("""
         html, body, [class*="css"] {
             font-family: 'Raleway', sans-serif;
         }
-
-        .title {
-            text-align: center;
-            font-family: 'Bebas Neue', sans-serif;
-            font-size: 60px;
-            color: #003366;
-        }
-
-        [data-testid="stAppViewContainer"] {
-            background: linear-gradient(
-                to bottom,
-                #f8e7e7, /* Soft Pink */
-                #fff9e6, /* Soft Yellow */
-                #e6f9f1, /* Soft Green */
-                #e6f0ff  /* Soft Blue */
-            );
-        }
     </style>
-    <h1 class="title">📊 Analysis and Results</h1>
 """, unsafe_allow_html=True)
 
 # ---------------------------
@@ -217,7 +199,7 @@ such as false negatives, may indicate households that are unfairly excluded from
 """)
 
 # Regression Model with XGBoost
-xgb_reg = XGBRegressor(n_estimators=100, learning_rate=0.1, max_depth=6, random_state=42)
+xgb_reg = XGBRegressor(n_estimators=50, learning_rate=0.1, max_depth=6, random_state=42, n_jobs=-1)
 xgb_reg.fit(X_reg_train, y_reg_train)
 y_xgb_pred = xgb_reg.predict(X_reg_test)
 xgb_rmse = np.sqrt(mean_squared_error(y_reg_test, y_xgb_pred))
@@ -226,7 +208,7 @@ st.markdown(f"**XGBoost Regression RMSE:** {xgb_rmse:.2f}")
 st.markdown(f"**XGBoost Regression R²:** {xgb_r2:.2f}")
 
 # Classification Model with XGBoost
-xgb_clf = XGBClassifier(n_estimators=100, learning_rate=0.1, max_depth=6, random_state=42)
+xgb_clf = XGBClassifier(n_estimators=50, learning_rate=0.1, max_depth=6, random_state=42, n_jobs=-1)
 xgb_clf.fit(X_clf_train, y_clf_train)
 y_xgb_clf_pred = xgb_clf.predict(X_clf_test)
 st.markdown(f"**XGBoost Classification Report:**")
@@ -272,7 +254,6 @@ The feature importance plot for the classification model shows the relative cont
 These insights enable banks to develop more targeted strategies for evaluating credit risk and tailoring financial products.
 """)
 
-
 # Hyperparameter Tuning with RandomizedSearchCV
 
 # Define hyperparameter grid for XGBoost Regression
@@ -290,7 +271,8 @@ random_search_reg = RandomizedSearchCV(
     scoring='neg_mean_squared_error',
     cv=3,
     random_state=42,
-    verbose=1
+    verbose=1,
+    n_jobs=-1
 )
 random_search_reg.fit(X_reg_train, y_reg_train)
 st.markdown(f"**Best Parameters for XGBoost Regression (Randomized Search):** {random_search_reg.best_params_}")
@@ -310,7 +292,8 @@ random_search_clf = RandomizedSearchCV(
     scoring='accuracy',
     cv=3,
     random_state=42,
-    verbose=1
+    verbose=1,
+    n_jobs=-1
 )
 random_search_clf.fit(X_clf_train, y_clf_train)
 st.markdown(f"**Best Parameters for XGBoost Classification (Randomized Search):** {random_search_clf.best_params_}")
