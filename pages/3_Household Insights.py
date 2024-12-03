@@ -25,7 +25,7 @@ st.markdown("""
         .title {
             text-align: center;
             font-family: 'Bebas Neue', sans-serif;
-            font-size: 50px;
+            font-size: 60px;
             color: #003366;
         }
 
