@@ -85,6 +85,16 @@ st.markdown("""
             color: #888888;
             margin-top: 20px;
         }
+
+        /* Background color */
+        [data-testid="stAppViewContainer"] {
+            background: linear-gradient(
+                to bottom,
+                #f8e7e7, /* Soft Pink */
+                #fff9e6, /* Soft Yellow */
+                #e6f9f1, /* Soft Green */
+                #e6f0ff  /* Soft Blue */
+            );
     </style>
 """, unsafe_allow_html=True)
 

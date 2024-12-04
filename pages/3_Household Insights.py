@@ -184,7 +184,9 @@ fig_credit_score = px.line(
     title="Average Credit Score by Household Size",
     labels={'Household_Size': 'Household Size', 'Average_Credit_Score': 'Average Credit Score'},
     markers=True,
+    line_shape='linear'
 )
+fig_credit_score.update_traces(line=dict(width=2), marker=dict(size=8, line=dict(width=2, color='DarkSlateGrey')))
 st.plotly_chart(fig_credit_score, use_container_width=True)
 st.markdown("""
 **Insights:**

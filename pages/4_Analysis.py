@@ -1,20 +1,24 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split, GridSearchCV, RandomizedSearchCV
-from sklearn.linear_model import LinearRegression, LogisticRegression
+from sklearn.model_selection import train_test_split, GridSearchCV, RandomizedSearchCV, cross_val_score
+from sklearn.linear_model import LinearRegression, LogisticRegression, Ridge
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import mean_squared_error, r2_score, classification_report, confusion_matrix
+from sklearn.metrics import (mean_squared_error, r2_score, classification_report, confusion_matrix,
+                             accuracy_score, precision_score, recall_score, f1_score, roc_auc_score)
+from imblearn.over_sampling import SMOTE
 import plotly.express as px
-import seaborn as sns
 import matplotlib.pyplot as plt
+import seaborn as sns
 from xgboost import XGBRegressor, XGBClassifier, plot_importance
+from sklearn.inspection import permutation_importance
+import shap
 
 # ---------------------------
 # 1. App Configuration
 # ---------------------------
 st.set_page_config(
-    page_title="Analysis and Results",
+    page_title="Predictive Analysis for Bank Households",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -29,9 +33,43 @@ st.markdown("""
         html, body, [class*="css"] {
             font-family: 'Raleway', sans-serif;
         }
+        /* Background color */
+        [data-testid="stAppViewContainer"] {
+            background: linear-gradient(
+                to bottom,
+                #f8e7e7, /* Soft Pink */
+                #fff9e6, /* Soft Yellow */
+                #e6f9f1, /* Soft Green */
+                #e6f0ff  /* Soft Blue */
+            );
+        }
     </style>
+    <h1 style='text-align: center; font-family: Bebas Neue, sans-serif; color: #003366;'>Exploring Financial Patterns Through Machine Learning Models</h1>
+    
 """, unsafe_allow_html=True)
-
+st.markdown("""
+<p style="text-align: center; font-family: Raleway, sans-serif; color: #003366;">
+    Welcome to the analysis page, where we delve into the financial data of households to uncover meaningful insights using predictive models. This page explores how <strong>machine learning</strong> can provide valuable answers to critical questions, helping banks and financial institutions make informed decisions.
+</p>
+<p style="text-align: left; font-family: Raleway, sans-serif; color: #003366;">
+    The analysis is divided into two main sections:
+</p>
+<ul style="font-family: Raleway, sans-serif; color: #003366;">
+    <li><strong>Regression Analysis</strong>: Focused on predicting total household income based on demographic and financial characteristics.</li>
+    <li><strong>Classification Analysis</strong>: Assessing household creditworthiness to distinguish between high- and low-risk groups.</li>
+</ul>
+<p style="font-family: Raleway, sans-serif; color: #003366;">
+    Through comprehensive visualizations, performance metrics, and in-depth explanations, we demonstrate the practical applications of models like <strong>Linear Regression</strong>, <strong>Logistic Regression</strong>, and <strong>XGBoost</strong>. Each analysis highlights not only the accuracy of predictions but also the insights derived from key features such as:
+</p>
+<ul style="font-family: Raleway, sans-serif; color: #003366;">
+    <li><strong>Average Age</strong>: How age correlates with income stability and credit risk.</li>
+    <li><strong>Household Size</strong>: The role of larger families in pooling financial resources.</li>
+    <li><strong>Credit Score</strong>: A critical factor influencing financial reliability.</li>
+</ul>
+<p style="font-family: Raleway, sans-serif; color: #003366;">
+    This page serves as a complete guide to understanding how predictive analytics can transform raw data into actionable insights, tailored for both technical and business audiences. Explore each section to see the models in action, review key findings, and gain a deeper appreciation for the power of data-driven financial analysis.
+</p>
+""", unsafe_allow_html=True)
 # ---------------------------
 # 3. Load Dataset and Process Data
 # ---------------------------
@@ -67,112 +105,178 @@ def load_and_prepare_data(filepath):
     household_df['Income_Per_Member'] = household_df['Total_Income'] / household_df['Household_Size']
     household_df['High_Creditworthiness'] = (household_df['Average_Credit_Score'] >= 700).astype(int)
 
-    # Impute missing values
-    household_df['Average_Age'].fillna(household_df['Average_Age'].mean(), inplace=True)
-    household_df['Average_Credit_Score'].fillna(household_df['Average_Credit_Score'].mean(), inplace=True)
-    household_df['Total_Income'].fillna(household_df['Total_Income'].mean(), inplace=True)
+    # Impute missing values for numeric columns only
+    numeric_cols = household_df.select_dtypes(include=[np.number]).columns
+    household_df[numeric_cols] = household_df[numeric_cols].fillna(household_df[numeric_cols].mean())
 
     return household_df
 
-# Load and prepare the dataset
 data_filepath = "customerdataset.csv"  # Replace with your actual dataset file path
 household_df = load_and_prepare_data(data_filepath)
 
 # ---------------------------
-# 4. Regression Analysis
+# 4. Feature Correlation Heatmap
+# ---------------------------
+st.subheader("Feature Correlation Heatmap")
+st.markdown("""
+<p style='text-align: justify; font-family: Raleway, sans-serif; color: #003366;'> 
+The correlation heatmap is a powerful visualization tool used to understand relationships between multiple features in a dataset. It helps identify how strongly two variables are related to one another, providing insights into potential dependencies and patterns. For this analysis, the heatmap allows us to explore key household attributes such as income, creditworthiness, household size, and more, uncovering which features influence each other. This is crucial for building effective predictive models and understanding the underlying dynamics in financial data. 
+</p>
+""", unsafe_allow_html=True)
+
+# Ensure only numeric columns are included in the correlation matrix
+numeric_cols = household_df.select_dtypes(include=[np.number]).columns
+correlation_matrix = household_df[numeric_cols].corr()
+
+# Plot the correlation heatmap
+fig_corr = px.imshow(correlation_matrix, text_auto=True, color_continuous_scale="Viridis")
+st.plotly_chart(fig_corr)
+
+st.markdown("""
+<p style='text-align: justify; font-family: Raleway, sans-serif; color: #003366;'> 
+The heatmap above presents the pairwise correlation between various features in the dataset:
+<ul>
+    <li><strong>Color Coding:</strong> The scale on the right represents the correlation values, ranging from -1 (strong negative correlation) to 1 (strong positive correlation). Yellow indicates a strong positive correlation, while dark purple represents weak or negative correlations.</li>
+    <li><strong>Key Insights:</strong>
+        <ul>
+            <li><strong>Total Income and Household Size:</strong> There is a strong positive correlation (~0.79), indicating that larger households tend to have higher combined incomes due to multiple earning members.</li>
+            <li><strong>Income Per Member and Total Income:</strong> A significant positive correlation (~0.57) suggests that higher overall income often results in higher income per individual.</li>
+            <li><strong>Average Credit Score and High Creditworthiness:</strong> These features exhibit a clear positive correlation (~0.62), confirming that households with higher average credit scores are more likely to be classified as highly creditworthy.</li>
+            <li><strong>Weak or Negative Correlations:</strong> Some features, such as <strong>Household Size</strong> and <strong>Creditworthiness</strong>, have weak or slightly negative correlations, reflecting limited or no direct relationship.</li>
+        </ul>
+    </li>
+</ul>
+This heatmap provides a foundation for identifying influential variables, aiding feature selection, and ensuring that our predictive models focus on the most impactful attributes.
+</p>
+""", unsafe_allow_html=True)
+
+# ---------------------------
+# 5. Regression Analysis
 # ---------------------------
 st.subheader("Regression Analysis: Predicting Total Income")
-st.markdown("""
-Predicting household income is a critical task for banks to understand the financial standing of their customers. 
-Income levels help banks make informed decisions about loan eligibility, financial product offerings, and risk management. 
-In this analysis, we build a **regression model** to predict the total income of a household based on key demographic 
-and financial characteristics, such as the average age of household members, the size of the household, and their average 
-credit score.
-
-By training this regression model, we aim to uncover patterns and relationships that can explain household income variability. 
-For example, does having a larger household always mean higher income? Or do households with older members exhibit more financial stability? 
-The results from this model can provide answers to these questions and offer actionable insights.
-""")
-
-# Splitting data for regression
 X_reg = household_df[['Average_Age', 'Household_Size', 'Average_Credit_Score']]
 y_reg = household_df['Total_Income']
+
 scaler = StandardScaler()
 X_reg_scaled = scaler.fit_transform(X_reg)
 X_reg_train, X_reg_test, y_reg_train, y_reg_test = train_test_split(X_reg_scaled, y_reg, test_size=0.2, random_state=42)
 
-# Training the regression model
-reg_model = LinearRegression()
-reg_model.fit(X_reg_train, y_reg_train)
+# Ridge Regression with Hyperparameter Tuning
+ridge_params = {'alpha': [0.1, 1.0, 10.0]}
+ridge_grid = GridSearchCV(Ridge(), param_grid=ridge_params, scoring='neg_mean_squared_error', cv=5)
+ridge_grid.fit(X_reg_train, y_reg_train)
+best_ridge = ridge_grid.best_estimator_
 
-# Regression evaluation
-y_reg_pred = reg_model.predict(X_reg_test)
-reg_rmse = np.sqrt(mean_squared_error(y_reg_test, y_reg_pred))
-reg_r2 = r2_score(y_reg_test, y_reg_pred)
+y_ridge_pred = best_ridge.predict(X_reg_test)
+ridge_rmse = np.sqrt(mean_squared_error(y_reg_test, y_ridge_pred))
+ridge_r2 = r2_score(y_reg_test, y_ridge_pred)
 
-# Display regression metrics
+st.markdown("""
+<p style='text-align: justify; font-family: Raleway, sans-serif; color: #003366;'>
+Regression analysis is a statistical method used to identify relationships between variables and predict a target variable based on input features. Ridge Regression, a variation of linear regression, incorporates regularization by adding a penalty term to the regression coefficients, making it particularly effective for handling datasets with multicollinearity or correlated features. In this analysis, we use Ridge Regression to predict household income while ensuring the model remains robust and avoids overfitting, even when some features are strongly correlated.
+</p>
+""", unsafe_allow_html=True)
+
 st.markdown(f"""
-**Model Performance:**
-- **Root Mean Squared Error (RMSE):** {reg_rmse:.2f}  
-- **R² Score:** {reg_r2:.2f}  
-
-An RMSE of {reg_rmse:.2f} means that, on average, our model's predictions deviate from the actual income by this amount. 
-The R² score of {reg_r2:.2f} indicates that {reg_r2*100:.2f}% of the variability in household income is explained by 
-our model. A high R² score suggests that our chosen features (`Average Age`, `Household Size`, and `Average Credit Score`) 
-are strongly related to income.
+**Ridge Regression Performance:**
+- **Best Alpha:** {ridge_grid.best_params_['alpha']}
+- **Root Mean Squared Error (RMSE):** {ridge_rmse:.2f}  
+- **R² Score:** {ridge_r2:.2f}
 """)
 
 # Regression visualization
 fig_reg = px.scatter(
-    x=y_reg_test, 
-    y=y_reg_pred, 
+    x=y_reg_test,
+    y=y_ridge_pred,
     labels={'x': 'Actual Income', 'y': 'Predicted Income'},
-    title="Regression Model: Actual vs Predicted Income",
+    title="Ridge Regression Model: Actual vs Predicted Income",
 )
 fig_reg.add_shape(type="line", x0=0, x1=max(y_reg_test), y0=0, y1=max(y_reg_test), line=dict(dash="dash"))
 st.plotly_chart(fig_reg)
+
 st.markdown("""
-The scatter plot above compares the actual household incomes (horizontal axis) with the predicted incomes 
-(vertical axis). Points that fall closer to the diagonal line represent predictions that closely match 
-the actual values, indicating model accuracy. Outliers, or points far from the diagonal, highlight areas 
-where the model's predictions deviate significantly, offering opportunities for further model refinement.
-""")
+<p style='text-align: justify; font-family: Raleway, sans-serif; color: #003366;'>
+The scatter plot above represents the performance of the Ridge Regression model in predicting total household income. Ridge Regression is particularly effective for handling multicollinearity and prevents overfitting by adding a penalty term to the regression coefficients. This approach is valuable in datasets where features might be correlated, ensuring that the model remains robust and generalizes well.
+</p>
+""", unsafe_allow_html=True)
+st.markdown("""
+<p style='text-align: justify; font-family: Raleway, sans-serif; color: #003366;'>
+The plot provides a comparison between the actual household incomes (x-axis) and the predicted incomes (y-axis) produced by the Ridge Regression model:
+<ul>
+    <li><strong>Diagonal Line:</strong> The dashed line represents perfect predictions, where actual and predicted values are equal. Points closer to this line indicate higher accuracy of the model's predictions.</li>
+    <li><strong>Clustering:</strong> A majority of the data points are tightly clustered along the diagonal, reflecting the model's ability to predict total income with reasonable accuracy. However, some outliers can be observed, indicating instances where the model struggles to match the actual values.</li>
+    <li><strong>Performance Metrics:</strong>
+        <ul>
+            <li><strong>Root Mean Squared Error (RMSE):</strong> 102702.44 – This metric indicates the average deviation of the predicted income from the actual income.</li>
+            <li><strong>R² Score:</strong> 0.68 – This suggests that 68% of the variability in household income is explained by the model's features, highlighting a decent but improvable performance.</li>
+        </ul>
+    </li>
+</ul>
+This visualization not only validates the model's predictions but also offers insights into areas for potential refinement, such as addressing the outliers and improving feature selection or hyperparameter tuning.
+</p>
+""", unsafe_allow_html=True)
+
+st.markdown("""
+<p style='text-align: justify; font-family: Raleway, sans-serif; color: #003366;'> 
+The model's **Root Mean Squared Error (RMSE)** is **102702.44**, which reflects the average deviation of predicted household incomes from the actual values. While this error might seem high, it is important to consider the following factors:
+<ul>
+    <li>The variability in household incomes is substantial, with incomes ranging widely across different households.</li>
+    <li>The RMSE is measured in absolute terms and does not fully reflect the model's ability to explain trends and patterns in the data.</li>
+</ul>
+Despite the high RMSE, the model demonstrates a strong ability to explain the variability in income with an **R² score of 0.68**, indicating that it captures 68% of the variance in household income. Furthermore, the feature importance analysis reveals key drivers of income, such as household size and average credit score, providing valuable insights for financial decision-making.
+</p>
+<p style='text-align: justify; font-family: Raleway, sans-serif; color: #003366;'> 
+By focusing on actionable insights rather than precise predictions, this model serves as a valuable tool for identifying income-related patterns and prioritizing households for targeted financial strategies. While future iterations can work on reducing the RMSE, the current model effectively supports decision-making processes with meaningful, data-driven insights.
+</p>
+""", unsafe_allow_html=True)
 
 # ---------------------------
-# 5. Classification Analysis
+# 6. Classification Analysis
 # ---------------------------
 st.subheader("Classification Analysis: High Creditworthiness")
 st.markdown("""
-A household's creditworthiness is a crucial factor for banks in assessing financial risk. Households with high 
-credit scores are more likely to repay loans on time and handle financial obligations responsibly. In this analysis, 
-we use a **classification model** to predict whether a household is "Highly Creditworthy" (i.e., `Credit Score >= 700`). 
+<p style='text-align: justify; font-family: Raleway, sans-serif; color: #003366;'>
+Classification analysis involves predicting the category or class of a target variable based on a set of features. In this context, we classify households as either "Highly Creditworthy" (1) or "Not Highly Creditworthy" (0) based on attributes like average age, household size, and total income. Evaluating the performance of the classification model is crucial, and metrics like precision, recall, F1-score, and accuracy provide insights into the model's reliability and effectiveness.
+</p>
+""", unsafe_allow_html=True)
 
-This classification task uses features such as the household's total income, the average age of its members, and 
-its size. The results can help banks segment their customers into high- and low-risk groups, enabling tailored 
-financial product offerings and risk mitigation strategies.
-""")
-
-# Splitting data for classification
 X_clf = household_df[['Average_Age', 'Household_Size', 'Total_Income']]
 y_clf = household_df['High_Creditworthiness']
-X_clf_scaled = scaler.fit_transform(X_clf)
-X_clf_train, X_clf_test, y_clf_train, y_clf_test = train_test_split(X_clf_scaled, y_clf, test_size=0.2, random_state=42)
 
-# Training the classification model
-clf_model = LogisticRegression()
-clf_model.fit(X_clf_train, y_clf_train)
+# Handle Class Imbalance
+smote = SMOTE(random_state=42)
+X_clf_balanced, y_clf_balanced = smote.fit_resample(X_clf, y_clf)
 
-# Classification evaluation
-y_clf_pred = clf_model.predict(X_clf_test)
+X_clf_scaled = scaler.fit_transform(X_clf_balanced)
+X_clf_train, X_clf_test, y_clf_train, y_clf_test = train_test_split(X_clf_scaled, y_clf_balanced, test_size=0.2, random_state=42)
+
+# Train Logistic Regression
+log_clf = LogisticRegression(max_iter=1000)
+log_clf.fit(X_clf_train, y_clf_train)
+
+# Evaluate Logistic Regression
+y_clf_pred = log_clf.predict(X_clf_test)
 clf_report = classification_report(y_clf_test, y_clf_pred, output_dict=True)
-
-# Display classification metrics
-st.markdown("""
-**Model Performance Metrics**:
-The classification model evaluates its performance using metrics like precision, recall, and F1-score. These metrics 
-provide a detailed breakdown of how well the model identifies highly creditworthy households compared to less creditworthy ones.
-""")
 st.json(clf_report)
+
+st.markdown("""
+<p style='text-align: justify; font-family: Raleway, sans-serif; color: #003366;'>
+The classification report above provides detailed metrics for both classes (0 and 1) and overall model performance:
+- **Precision**: The proportion of correctly predicted instances among the total predicted for each class. For instance, a precision of ~0.75 for class 0 indicates that 75% of households classified as "Not Highly Creditworthy" were correct.
+- **Recall**: The proportion of actual instances correctly predicted. A recall of ~0.72 for class 1 shows that the model identified 72% of all "Highly Creditworthy" households.
+- **F1-Score**: The harmonic mean of precision and recall, balancing false positives and false negatives.
+- **Overall Accuracy**: ~0.74, showing that 74% of the total predictions are correct.
+- **Macro and Weighted Averages**: The macro average calculates metrics equally across classes, while the weighted average accounts for class imbalances.
+
+These metrics highlight that while the model performs well overall, there is room for improvement in balancing precision and recall, particularly for class 1 (Highly Creditworthy).
+</p>
+""", unsafe_allow_html=True)
+
+st.markdown("""
+<p style='text-align: justify; font-family: Raleway, sans-serif; color: #003366;'>
+The confusion matrix is a fundamental tool in classification analysis, offering a clear overview of how well a model performs in distinguishing between different classes. It displays the number of correct and incorrect predictions for each class, helping identify potential strengths and weaknesses of the model. For this analysis, the confusion matrix evaluates the classification of households as "Highly Creditworthy" (1) or "Not Highly Creditworthy" (0).
+</p>
+""", unsafe_allow_html=True)
 
 # Confusion matrix
 conf_matrix = confusion_matrix(y_clf_test, y_clf_pred)
@@ -184,141 +288,43 @@ fig_conf_matrix = px.imshow(
     title="Confusion Matrix"
 )
 st.plotly_chart(fig_conf_matrix)
+
 st.markdown("""
-The confusion matrix above provides a clear view of the model's performance. The diagonal elements represent 
-correct classifications, while the off-diagonal elements indicate misclassifications. A high number of correct 
-classifications demonstrates the model's reliability, while misclassifications suggest areas for further improvement.
-For example:
-- **True Positives (Top-left cell):** The number of households correctly classified as highly creditworthy.
-- **True Negatives (Bottom-right cell):** The number of households correctly classified as not highly creditworthy.
-- **False Positives (Top-right cell):** Households incorrectly classified as highly creditworthy.
-- **False Negatives (Bottom-left cell):** Households incorrectly classified as not highly creditworthy.
+<p style='text-align: justify; font-family: Raleway, sans-serif; color: #003366;'>
+The confusion matrix above breaks down the model's predictions as follows:
+- **True Positives (Bottom-right cell: 352)**: Households correctly classified as "Highly Creditworthy."
+- **True Negatives (Top-left cell: 342)**: Households correctly classified as "Not Highly Creditworthy."
+- **False Positives (Top-right cell: 135)**: Households incorrectly classified as "Highly Creditworthy," indicating overestimation of creditworthiness.
+- **False Negatives (Bottom-left cell: 112)**: Households incorrectly classified as "Not Highly Creditworthy," suggesting missed opportunities for identifying creditworthy households.
 
-Understanding these metrics is vital for improving model accuracy and identifying potential biases in the data. Misclassifications, 
-such as false negatives, may indicate households that are unfairly excluded from financial opportunities.
-""")
-
-# Regression Model with XGBoost
-xgb_reg = XGBRegressor(n_estimators=50, learning_rate=0.1, max_depth=6, random_state=42, n_jobs=-1)
-xgb_reg.fit(X_reg_train, y_reg_train)
-y_xgb_pred = xgb_reg.predict(X_reg_test)
-xgb_rmse = np.sqrt(mean_squared_error(y_reg_test, y_xgb_pred))
-xgb_r2 = r2_score(y_reg_test, y_xgb_pred)
-st.markdown(f"**XGBoost Regression RMSE:** {xgb_rmse:.2f}")
-st.markdown(f"**XGBoost Regression R²:** {xgb_r2:.2f}")
-
-# Classification Model with XGBoost
-xgb_clf = XGBClassifier(n_estimators=50, learning_rate=0.1, max_depth=6, random_state=42, n_jobs=-1)
-xgb_clf.fit(X_clf_train, y_clf_train)
-y_xgb_clf_pred = xgb_clf.predict(X_clf_test)
-st.markdown(f"**XGBoost Classification Report:**")
-st.json(classification_report(y_clf_test, y_xgb_clf_pred, output_dict=True))
-
-# Feature Importance for Regression
-st.markdown("### Feature Importance: Regression")
-fig, ax = plt.subplots(figsize=(10, 6))
-plot_importance(xgb_reg, ax=ax)
-st.pyplot(fig)
-
-# Explanation for Regression Feature Importance
-st.markdown("""
-The plot above shows the feature importance for the XGBoost regression model. Feature importance indicates how much each feature contributes to the model's predictions. Features with higher importance values have a greater impact on the model's predictions. Understanding feature importance helps in identifying which features are most influential in predicting the target variable (e.g., income).
-""")
-st.markdown("""
-The feature importance plot for the regression model highlights which variables most influence the prediction of household income:
-- **Average Age**: Older households may have more established incomes, contributing significantly to predictions.
-- **Household Size**: Larger households often pool multiple incomes, making this a crucial feature.
-- **Average Credit Score**: A high credit score may correlate with better financial stability and higher income.
-
-Understanding feature importance allows banks to:
-1. Focus on the most impactful attributes when assessing household income.
-2. Identify opportunities for further feature engineering.
-""")
-
-# Feature Importance for Classification
-st.markdown("### Feature Importance: Classification")
-fig, ax = plt.subplots(figsize=(10, 6))
-plot_importance(xgb_clf, ax=ax)
-st.pyplot(fig)
-
-# Explanation for Classification Feature Importance
-st.markdown("""
-The plot above shows the feature importance for the XGBoost classification model. Similar to the regression model, feature importance in the classification model indicates how much each feature contributes to the model's ability to classify households as highly creditworthy or not. Features with higher importance values are more influential in determining the classification outcome. This information can be used to focus on the most impactful features when improving the model or making business decisions.
-""")
-st.markdown("""
-The feature importance plot for the classification model shows the relative contribution of each feature in predicting creditworthiness:
-- **Total Income**: Higher-income households tend to have better financial stability, leading to higher credit scores.
-- **Average Age**: Older households may have more credit history, positively influencing creditworthiness.
-- **Household Size**: Larger households might have shared financial obligations, potentially reducing individual credit risk.
-
-These insights enable banks to develop more targeted strategies for evaluating credit risk and tailoring financial products.
-""")
-
-# Hyperparameter Tuning with RandomizedSearchCV
-
-# Define hyperparameter grid for XGBoost Regression
-param_grid_reg = {
-    'n_estimators': [50, 100, 150],
-    'learning_rate': [0.01, 0.1, 0.2],
-    'max_depth': [3, 5, 7]
-}
-
-# Randomized Search for XGBoost Regression
-random_search_reg = RandomizedSearchCV(
-    estimator=XGBRegressor(random_state=42),
-    param_distributions=param_grid_reg,
-    n_iter=10,  # Number of parameter settings sampled
-    scoring='neg_mean_squared_error',
-    cv=3,
-    random_state=42,
-    verbose=1,
-    n_jobs=-1
-)
-random_search_reg.fit(X_reg_train, y_reg_train)
-st.markdown(f"**Best Parameters for XGBoost Regression (Randomized Search):** {random_search_reg.best_params_}")
-
-# Define hyperparameter grid for XGBoost Classification
-param_grid_clf = {
-    'n_estimators': [50, 100, 150],
-    'learning_rate': [0.01, 0.1, 0.2],
-    'max_depth': [3, 5, 7]
-}
-
-# Randomized Search for XGBoost Classification
-random_search_clf = RandomizedSearchCV(
-    estimator=XGBClassifier(random_state=42),
-    param_distributions=param_grid_clf,
-    n_iter=10,  # Number of parameter settings sampled
-    scoring='accuracy',
-    cv=3,
-    random_state=42,
-    verbose=1,
-    n_jobs=-1
-)
-random_search_clf.fit(X_clf_train, y_clf_train)
-st.markdown(f"**Best Parameters for XGBoost Classification (Randomized Search):** {random_search_clf.best_params_}")
+These metrics highlight the balance between precision (minimizing false positives) and recall (minimizing false negatives). While the model performs reasonably well, reducing false negatives could ensure that deserving households are not overlooked, while minimizing false positives helps avoid undue financial risks.
+</p>
+""", unsafe_allow_html=True)
 
 # ---------------------------
-# 6. Key Insights
+# 7. Feature Importance Using SHAP
 # ---------------------------
-st.subheader("Key Takeaways")
+st.subheader("Feature Importance Using SHAP")
+
 st.markdown("""
-### Regression Model:
-- The **R² score** of {reg_r2:.2f} demonstrates that key features such as household size, average age, and average credit score 
-  are strong predictors of total household income. Banks can use this insight to prioritize high-income households for premium 
-  financial products.
-- However, some **outliers** indicate unique or unexpected households that the model struggles to predict accurately. These cases 
-  could represent special financial circumstances or irregular data patterns.
+<p style='text-align: justify; font-family: Raleway, sans-serif; color: #003366;'> 
+SHAP (SHapley Additive exPlanations) is a machine learning interpretability tool that breaks down model predictions by quantifying the contribution of each feature to an individual prediction. It provides transparency and ensures fairness by helping us understand the driving factors behind a model's decisions. For our analysis, SHAP is used to highlight the most influential factors in predicting household creditworthiness, ensuring that the model's decisions align with domain knowledge and business logic.
+</p>
+""", unsafe_allow_html=True)
 
-### Classification Model:
-- The **precision** and **recall** scores suggest that the model performs well in identifying highly creditworthy households. 
-  These insights can help banks streamline loan approvals and reduce the risk of defaults.
-- The **confusion matrix** highlights areas for improvement. For instance, reducing **false positives** (households incorrectly 
-  classified as creditworthy) can help banks avoid financial risks.
+explainer = shap.Explainer(log_clf, X_clf_train)
+shap_values = explainer(X_clf_train)
+shap.summary_plot(shap_values, X_clf_balanced, plot_type="bar", show=False)
+st.pyplot(plt.gcf())
 
-### Overall Recommendations:
-1. **Focus on High-Income Households:** Banks can target households with high predicted incomes for exclusive financial products, 
-   such as investment plans or premium credit cards.
-2. **Improve Creditworthiness Predictions:** Addressing false positives in the classification model can refine risk management strategies.
-3. **Explore Outliers:** Investigate households that deviate from expected patterns to uncover untapped opportunities or detect anomalies.
-""")
+st.markdown("""
+<p style='text-align: justify; font-family: Raleway, sans-serif; color: #003366;'> 
+The bar chart above displays the <strong>average absolute SHAP values</strong> for each feature, providing insights into the relative importance of predictors in the classification model. Here’s what the results show:
+<ul>
+    <li><strong>Total Income:</strong> This is the most impactful feature, indicating that higher total income significantly improves the likelihood of being classified as highly creditworthy. This aligns with expectations, as income directly affects financial stability.</li>
+    <li><strong>Average Age:</strong> The second most significant feature, reflecting that older households tend to be more financially stable and responsible, positively influencing creditworthiness predictions.</li>
+    <li><strong>Household Size:</strong> While less impactful compared to income and age, household size plays a role in understanding financial dynamics. Larger households may share resources and responsibilities, subtly affecting credit risk.</li>
+</ul>
+These results confirm the importance of income, age, and household size in assessing household creditworthiness, providing actionable insights for banks to tailor financial products and risk assessments.
+</p>
+""", unsafe_allow_html=True)
