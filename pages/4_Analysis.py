@@ -218,12 +218,12 @@ This visualization not only validates the model's predictions but also offers in
 
 st.markdown("""
 <p style='text-align: justify; font-family: Raleway, sans-serif; color: #003366;'> 
-The model's **Root Mean Squared Error (RMSE)** is **102702.44**, which reflects the average deviation of predicted household incomes from the actual values. While this error might seem high, it is important to consider the following factors:
+The model's <strong>Root Mean Squared Error (RMSE)</strong> is <strong>102702.44</strong>, which reflects the average deviation of predicted household incomes from the actual values. While this error might seem high, it is important to consider the following factors:
 <ul>
     <li>The variability in household incomes is substantial, with incomes ranging widely across different households.</li>
     <li>The RMSE is measured in absolute terms and does not fully reflect the model's ability to explain trends and patterns in the data.</li>
 </ul>
-Despite the high RMSE, the model demonstrates a strong ability to explain the variability in income with an **R² score of 0.68**, indicating that it captures 68% of the variance in household income. Furthermore, the feature importance analysis reveals key drivers of income, such as household size and average credit score, providing valuable insights for financial decision-making.
+Despite the high RMSE, the model demonstrates a strong ability to explain the variability in income with an <strong>R² score of 0.68</strong>, indicating that it captures 68% of the variance in household income. Furthermore, the feature importance analysis reveals key drivers of income, such as household size and average credit score, providing valuable insights for financial decision-making.
 </p>
 <p style='text-align: justify; font-family: Raleway, sans-serif; color: #003366;'> 
 By focusing on actionable insights rather than precise predictions, this model serves as a valuable tool for identifying income-related patterns and prioritizing households for targeted financial strategies. While future iterations can work on reducing the RMSE, the current model effectively supports decision-making processes with meaningful, data-driven insights.
