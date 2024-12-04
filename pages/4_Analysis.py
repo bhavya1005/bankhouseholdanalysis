@@ -261,13 +261,15 @@ st.json(clf_report)
 
 st.markdown("""
 <p style='text-align: justify; font-family: Raleway, sans-serif; color: #003366;'>
-The classification report above provides detailed metrics for both classes (0 and 1) and overall model performance:
-- **Precision**: The proportion of correctly predicted instances among the total predicted for each class. For instance, a precision of ~0.75 for class 0 indicates that 75% of households classified as "Not Highly Creditworthy" were correct.
-- **Recall**: The proportion of actual instances correctly predicted. A recall of ~0.72 for class 1 shows that the model identified 72% of all "Highly Creditworthy" households.
-- **F1-Score**: The harmonic mean of precision and recall, balancing false positives and false negatives.
-- **Overall Accuracy**: ~0.74, showing that 74% of the total predictions are correct.
-- **Macro and Weighted Averages**: The macro average calculates metrics equally across classes, while the weighted average accounts for class imbalances.
-
+The classification report above provides detailed metrics for both classes (0 and 1) and overall model performance:</p>
+<ul style='text-align: justify; font-family: Raleway, sans-serif; color: #003366;'>
+<li><strong>Precision</strong>: The proportion of correctly predicted instances among the total predicted for each class. For instance, a precision of ~0.75 for class 0 indicates that 75% of households classified as "Not Highly Creditworthy" were correct.</li>
+<li><strong>Recall</strong>: The proportion of actual instances correctly predicted. A recall of ~0.72 for class 1 shows that the model identified 72% of all "Highly Creditworthy" households.</li>
+<li><strong>F1-Score</strong>: The harmonic mean of precision and recall, balancing false positives and false negatives.</li>
+<li><strong>Overall Accuracy</strong>: ~0.74, showing that 74% of the total predictions are correct.</li>
+<li><strong>Macro and Weighted Averages</strong>: The macro average calculates metrics equally across classes, while the weighted average accounts for class imbalances.</li>
+</ul>
+<p style='text-align: justify; font-family: Raleway, sans-serif; color: #003366;'>
 These metrics highlight that while the model performs well overall, there is room for improvement in balancing precision and recall, particularly for class 1 (Highly Creditworthy).
 </p>
 """, unsafe_allow_html=True)
@@ -292,10 +294,10 @@ st.plotly_chart(fig_conf_matrix)
 st.markdown("""
 <p style='text-align: justify; font-family: Raleway, sans-serif; color: #003366;'>
 The confusion matrix above breaks down the model's predictions as follows:
-- **True Positives (Bottom-right cell: 352)**: Households correctly classified as "Highly Creditworthy."
-- **True Negatives (Top-left cell: 342)**: Households correctly classified as "Not Highly Creditworthy."
-- **False Positives (Top-right cell: 135)**: Households incorrectly classified as "Highly Creditworthy," indicating overestimation of creditworthiness.
-- **False Negatives (Bottom-left cell: 112)**: Households incorrectly classified as "Not Highly Creditworthy," suggesting missed opportunities for identifying creditworthy households.
+- <strong>True Positives (Bottom-right cell: 352)</strong>: Households correctly classified as "Highly Creditworthy."
+- <strong>True Negatives (Top-left cell: 342)</strong>: Households correctly classified as "Not Highly Creditworthy."
+- <strong>False Positives (Top-right cell: 135)</strong>: Households incorrectly classified as "Highly Creditworthy," indicating overestimation of creditworthiness.
+- <strong>False Negatives (Bottom-left cell: 112)</strong>: Households incorrectly classified as "Not Highly Creditworthy," suggesting missed opportunities for identifying creditworthy households.
 
 These metrics highlight the balance between precision (minimizing false positives) and recall (minimizing false negatives). While the model performs reasonably well, reducing false negatives could ensure that deserving households are not overlooked, while minimizing false positives helps avoid undue financial risks.
 </p>
