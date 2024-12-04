@@ -33,7 +33,7 @@ This dashboard leverages **Streamlit** for a seamless user experience, integrati
    - Provides insights into household financial behaviors to support decision-making in the banking sector.
 
 ### **Live Dashboard**
-Explore the live app here: [**Bank Household Analysis Dashboard**](https://finalprojectcmse830bhavya.streamlit.app/)
+Explore the live app here: [**Bank Household Analysis Dashboard**](https://bankhouseholdbc.streamlit.app//)
 
 ### **Key Use Cases**
 - **Customer Segmentation**: Tailor financial products to specific customer groups based on household metrics.
