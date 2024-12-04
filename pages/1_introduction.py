@@ -159,10 +159,8 @@ if not data.empty:
 else:
     st.warning("The dataset is empty or could not be loaded.")
 
-# Add "Created by" section to the sidebar
+# GitHub Link
 st.sidebar.markdown("""
 ---
-<p style="text-align: center;">
-    Created by <a href="https://github.com/bhavya1005" target="_blank"><strong>Bhavya1005</strong></a>
-</p>
-""", unsafe_allow_html=True)
+**Created by [Bhavya Chawla](https://github.com/bhavya1005)** 
+""")
