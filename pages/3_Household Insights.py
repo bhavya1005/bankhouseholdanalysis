@@ -193,3 +193,9 @@ st.markdown("""
 - Average credit scores tend to decrease slightly as household size increases, potentially due to financial strain in larger households.
 - Smaller households (2-3 members) tend to maintain higher credit scores, indicating better credit management.
 """)
+
+# GitHub Link
+st.sidebar.markdown("""
+---
+**Created by [Bhavya Chawla](https://github.com/bhavya1005)** 
+""")

@@ -230,3 +230,8 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+# GitHub Link
+st.sidebar.markdown("""
+---
+**Created by [Bhavya Chawla](https://github.com/bhavya1005)** 
+""")

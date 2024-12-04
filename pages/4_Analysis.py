@@ -328,3 +328,9 @@ The bar chart above displays the <strong>average absolute SHAP values</strong> f
 These results confirm the importance of income, age, and household size in assessing household creditworthiness, providing actionable insights for banks to tailor financial products and risk assessments.
 </p>
 """, unsafe_allow_html=True)
+
+# GitHub Link
+st.sidebar.markdown("""
+---
+**Created by [Bhavya Chawla](https://github.com/bhavya1005)** 
+""")

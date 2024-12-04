@@ -146,13 +146,8 @@ Developed for a midterm project on data-driven financial insights. Explore the f
 </p>
 """, unsafe_allow_html=True)
 
-# Navigation
-st.sidebar.title("📑 Navigation")
-selection = st.sidebar.radio("Go to", ["Introduction", "Dataset Overview", "Household Insights", "Analysis and Results", "Final Results"])
-
-# Add Name and GitHub Link
+# GitHub Link
 st.sidebar.markdown("""
 ---
-**Created by [Bhavya Chawla](https://github.com/bhavya1005)**  
-[GitHub](https://github.com/bhavya1005)
+**Created by [Bhavya Chawla](https://github.com/bhavya1005)** 
 """)

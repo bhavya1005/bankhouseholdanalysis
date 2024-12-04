@@ -185,3 +185,9 @@ st.plotly_chart(fig_credit_dist)
 st.markdown("""
 The credit score distribution provides an overview of customers' financial health, with a focus on identifying customers with excellent or poor creditworthiness.
 """)
+
+# GitHub Link
+st.sidebar.markdown("""
+---
+**Created by [Bhavya Chawla](https://github.com/bhavya1005)** 
+""")
